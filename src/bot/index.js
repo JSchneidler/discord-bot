@@ -1,5 +1,7 @@
 const Discord = require('discord.js');
 
+const CommandController = require('./commandController');
+
 const BOT_TOKEN = 'NDI5Njk5Njk3MzcyODIzNTYz.DaFq_g.Czhh7zmqSht8VepWMvU1fKaytR8';
 
 const client = new Discord.Client();
@@ -14,15 +16,9 @@ client.on('ready', () => {
 client.on('message', msg => {
     let action;
 
-    if (msg.content.startsWith('!')) console.log('command');
-    /*
-    if (msg.content === 'verify') action = verifyUser(msg.author);
-    else if (msg.content === 'ping') action = Promise.resolve('pong');
-    */
+    if (msg.content.startsWith('!')) {
+        const controller = new CommandController(msg);
 
-    if (action) action.then(response => msg.channel.send(response)).catch(err => msg.reply(err));
+        return controller.process();
+    }
 });
-
-function verifyUser(user) {
-    return user.fetchProfile().then(console.log).catch(console.log);
-}
