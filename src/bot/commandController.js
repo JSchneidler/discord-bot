@@ -48,8 +48,7 @@ module.exports = class CommandController {
 
   _insult(parameters) {
     return getInsult().then(insult => {
-      const userID = this.message.mentions.members.first();
-      if (!userID) throw new Error('No member mentioned for insult');
+      const userID = this.message.mentions.members.first() || this.message.author.username;
 
       return this._replyChannel(`${userID} ${insult}`);
     });
