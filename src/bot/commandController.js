@@ -51,8 +51,6 @@ module.exports = class CommandController {
       const userID = this.message.mentions.members.first();
       if (!userID) throw new Error('No member mentioned for insult');
 
-      const insult = INSULTS[Math.floor(Math.random() * INSULTS.length)]
-
       return this._replyChannel(`${userID} ${insult}`);
     });
   }
