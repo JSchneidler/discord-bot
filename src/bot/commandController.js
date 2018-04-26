@@ -48,7 +48,7 @@ module.exports = class CommandController {
 
   _insult(parameters) {
     return getInsult().then(insult => {
-      const userID = this.message.mentions.members.first() || this.message.author.username;
+      const userID = this.message.mentions.members.first() || this.message.author;
 
       return this._replyChannel(`${userID} ${insult}`);
     });
