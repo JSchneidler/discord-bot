@@ -17,13 +17,6 @@ const STATS = {
   lifetime: 'recentMatches',
 };
 
-const INSULTS = [
-  'You are a cunt',
-  'Get fucked, whore',
-  'Suck a cock, faggot',
-  'Retard boy',
-];
-
 module.exports = class CommandController {
   constructor(message) {
     this.message = message;
@@ -54,11 +47,14 @@ module.exports = class CommandController {
   }
 
   _insult(parameters) {
-    if (!this.message.mentions.members) throw new Error('No member mentioned for insult');
-    console.log(this.message.mentions.members.first());
-    const userID = this.message.mentions.members.first();
-    const insult = INSULTS[Math.floor(Math.random() * INSULTS.length)]
-    return this._replyChannel(`${userID} ${insult}`);
+    return getInsult().then(insult => {
+      const userID = this.message.mentions.members.first();
+      if (!userID) throw new Error('No member mentioned for insult');
+
+      const insult = INSULTS[Math.floor(Math.random() * INSULTS.length)]
+
+      return this._replyChannel(`${userID} ${insult}`);
+    });
   }
 
   _getKD(parameters) {
@@ -88,3 +84,8 @@ module.exports = class CommandController {
     }
   }
 };
+
+function getInsult() {
+  return axios.get('https://insult.mattbas.org/api/insult')
+    .then(response => response.data);
+}
