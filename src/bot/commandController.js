@@ -17,6 +17,13 @@ const STATS = {
   lifetime: 'recentMatches',
 };
 
+const INSULTS = [
+  'You are a cunt',
+  'Get fucked, whore',
+  'Suck a cock, faggot',
+  'Retard boy',
+];
+
 module.exports = class CommandController {
   constructor(message) {
     this.message = message;
@@ -47,7 +54,11 @@ module.exports = class CommandController {
   }
 
   _insult(parameters) {
-    this._replyChannel('insult');
+    if (!this.message.mentions.members) throw new Error('No member mentioned for insult');
+    console.log(this.message.mentions.members.first());
+    const userID = this.message.mentions.members.first();
+    const insult = INSULTS[Math.floor(Math.random() * INSULTS.length)]
+    return this._replyChannel(`${userID} ${insult}`);
   }
 
   _getKD(parameters) {

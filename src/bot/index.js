@@ -2,7 +2,7 @@ const Discord = require('discord.js');
 
 const CommandController = require('./commandController');
 
-const BOT_TOKEN = 'NDI5Njk5Njk3MzcyODIzNTYz.DaFq_g.Czhh7zmqSht8VepWMvU1fKaytR8';
+const BOT_TOKEN = process.env.BOT_TOKEN;
 
 const client = new Discord.Client();
 
