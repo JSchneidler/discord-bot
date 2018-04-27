@@ -3,6 +3,6 @@ module.exports = {
   description: 'A utility for managing and viewing installed plugins.',
   rootCommand: 'plugins',
   process: (message, client) => {
-    console.log('Plugin plugin');
+    message.channel.send(`${message.author} Plugins: (TODO)`);
   },
 };

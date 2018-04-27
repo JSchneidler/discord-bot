@@ -3,6 +3,6 @@ module.exports = {
   description: 'A help utility for discord-bot.',
   rootCommand: 'help',
   process: (message, client) => {
-    console.log('Help plugin');
+    message.channel.send(`${message.author} Help: (TODO)`);
   },
 };
