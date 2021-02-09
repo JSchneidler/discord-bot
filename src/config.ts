@@ -1,7 +1,7 @@
 // EC2 config
 export const ec2Region = 'us-east-2'
-export const ec2InstanceId = 'i-07b1e73667c2018ca'
-// export const ec2InstanceId = 'i-04bd8999038cf7c74' // Test instance
+// export const ec2InstanceId = 'i-07b1e73667c2018ca'
+export const ec2InstanceId = 'i-04bd8999038cf7c74' // Test instance
 
 // Discord config
 export const serverId = '431629509348032522'
