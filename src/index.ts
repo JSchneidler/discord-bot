@@ -31,7 +31,9 @@ async function init() {
 
   // @ts-expect-error: No support for interactions yet
   client.ws.on('INTERACTION_CREATE', async interaction => {
-    console.log(`User '${interaction.member.nick}' called command '${interaction.data.name}'`)
+    const caller = `User '${interaction.member.nick || interaction.member.user.username}' called command '${interaction.data.name}'`
+    console.log(caller)
+    botChannel?.send(caller)
 
     // Fail out if user is not allowed to perform slash commands
     if (!allowedIds.includes(interaction.member.user.id)) {

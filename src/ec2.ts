@@ -37,6 +37,7 @@ class EC2 {
       if (this.shutdownTimer) clearTimeout(this.shutdownTimer)
 
       await this.client.send(new StopInstancesCommand({ InstanceIds: [ec2InstanceId]} ))
+      console.log('Valheim server stopped')
       await this.refreshServerState()
     }
   }
