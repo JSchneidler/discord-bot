@@ -1,6 +1,5 @@
 import config from 'config'
 import { DescribeInstancesCommand, EC2Client, InstanceStateName, RebootInstancesCommand, StartInstancesCommand, StopInstancesCommand } from '@aws-sdk/client-ec2'
-import moment, { Moment } from 'moment'
 
 interface EC2Status {
   state?: InstanceStateName,
@@ -8,22 +7,22 @@ interface EC2Status {
 }
 
 class EC2 {
-  private shutdownTimer?: NodeJS.Timeout
-  private shutdownTime?: Moment
   private running = false
   private client = new EC2Client({
     region: config.get('ec2Region')
   })
 
-  constructor() {
-    this.refreshServerState()
-  }
-
-  async fetchServerStatus(): Promise<EC2Status> {
+  async fetchServerState(): Promise<EC2Status> {
     const response = await this.client.send(new DescribeInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+
     if (response.Reservations && response.Reservations[0] && response.Reservations[0].Instances && response.Reservations[0].Instances[0].State) {
+      const state = response.Reservations[0].Instances[0].State.Name as InstanceStateName
+      if (state === 'running' || state === 'pending') {
+        this.running = true
+      } else this.running = false
+
       return {
-        state: response.Reservations[0].Instances[0].State.Name as InstanceStateName,
+        state,
         launched: response.Reservations[0].Instances[0].LaunchTime
       }
     } else {
@@ -33,60 +32,29 @@ class EC2 {
 
   async stopServer(): Promise<void> {
     if (this.running) {
-      if (this.shutdownTimer) clearTimeout(this.shutdownTimer)
-
       await this.client.send(new StopInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
       console.log('Valheim server stopped')
-      await this.refreshServerState()
+      // await this.fetchServerState()
     }
   }
 
-  async startServer(hours = 12): Promise<void> {
+  async startServer(): Promise<void> {
     if (!this.running) {
-      this.setShutdownTime(moment().add(hours, 'hours'))
-
       await this.client.send(new StartInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
-      await this.refreshServerState()
-    }
-  }
-
-  async extendServer(hours = 6): Promise<void> {
-    if (this.running) {
-      this.setShutdownTime(moment().add(hours, 'hours'))
-
-      await this.refreshServerState()
+      console.log('Valheim server started')
+      // await this.fetchServerState()
     }
   }
 
   async rebootServer(): Promise<void> {
-    this.setShutdownTime(moment().add(12, 'hours'))
-
-    await this.client.send(new RebootInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
-    await this.refreshServerState()
-  }
-
-  public setShutdownTime(shutdownTime: Moment): void {
-    if (this.shutdownTimer) clearTimeout(this.shutdownTimer)
-    this.shutdownTime = shutdownTime
-    this.shutdownTimer = setTimeout(this.stopServer, shutdownTime.diff(moment()))
-
-    console.log(`Server shutdown scheduled for ${shutdownTime.format('LT')} (${shutdownTime.fromNow()})`)
-  }
-
-  public getShutdownTime() {
-    return this.shutdownTime
+    if (this.running) {
+      await this.client.send(new RebootInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+      // await this.fetchServerState()
+    }
   }
 
   public isRunning() {
     return this.running
-  }
-
-  private async refreshServerState() {
-    const status = await this.fetchServerStatus()
-    if (status.state === 'running' || status.state === 'pending') {
-      this.running = true
-      if (!this.shutdownTime) this.setShutdownTime(moment(status.launched).add(12, 'hours'))
-    } else this.running = false
   }
 }
 

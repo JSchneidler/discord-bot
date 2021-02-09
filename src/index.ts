@@ -12,11 +12,17 @@ enum SlashCommands {
   Reboot ='reboot'
 }
 
+let shutdownTimer: NodeJS.Timeout
+let shutdownTime: Moment
+
 async function init() {
   const BOT_TOKEN = process.env.BOT_TOKEN
   if (!BOT_TOKEN) {
     throw Error('BOT_TOKEN not set')
   }
+
+  const state = await ec2.fetchServerState()
+  setShutdownTime(moment(state.launched).add(12, 'hours'))
 
   const client = new Client()
 
@@ -27,6 +33,7 @@ async function init() {
 
     registerSlashCommands()
     botChannel = await getBotChannel()
+    await sendServerStatus()
   })
 
   // @ts-expect-error: No support for interactions yet
@@ -46,20 +53,21 @@ async function init() {
         break
       case SlashCommands.Start:
         if (!ec2.isRunning()) {
-          await ec2.startServer(interaction.data.options ? interaction.data.options[0].value : undefined)
-          const shutdownTime = moment(ec2.getShutdownTime())
+          await ec2.startServer()
+          setShutdownTime(moment().add(interaction.data.options ? interaction.data.options[0].value : 12, 'hours'))
           botChannel?.send(`Valheim server started. Shutdown time: ${getFriendlyTime(shutdownTime)})`)
         } else botChannel?.send('Valheim server already running')
         break
       case SlashCommands.Extend:
         if (ec2.isRunning()) {
-          await ec2.extendServer(interaction.data.options ? interaction.data.options[0].value : undefined)
-          const shutdownTime = moment(ec2.getShutdownTime())
+          setShutdownTime(moment().add(interaction.data.options ? interaction.data.options[0].value : 6, 'hours'))
           botChannel?.send(`New shutdown time: ${getFriendlyTime(shutdownTime)})`)
         } else botChannel?.send('Valheim server not running')
         break
       case SlashCommands.Stop:
         if (ec2.isRunning()) {
+          clearTimeout(shutdownTimer)
+          shutdownTime = moment()
           await ec2.stopServer()
           botChannel?.send('Valheim server stopped')
         } else botChannel?.send('Valheim server not running')
@@ -67,7 +75,7 @@ async function init() {
       case SlashCommands.Reboot:
       if (ec2.isRunning()) {
         await ec2.rebootServer()
-        const shutdownTime = moment(ec2.getShutdownTime())
+        setShutdownTime(moment().add(12, 'hours'))
         botChannel?.send(`Rebooting Valheim server. New shutdown time: ${getFriendlyTime(shutdownTime)})`)
       } else botChannel?.send('Valheim server not running')
         break
@@ -145,13 +153,20 @@ async function init() {
   }
 
   async function sendServerStatus() {
-    const status = await ec2.fetchServerStatus()
+    const status = await ec2.fetchServerState()
     if (status) {
-      const shutdownTime = moment(ec2.getShutdownTime())
       botChannel?.send(`Valheim server status: ${status.state}`)
       if (ec2.isRunning()) botChannel?.send(`Shutdown time: ${getFriendlyTime(shutdownTime)})`)
     }
   }
+}
+
+function setShutdownTime(newTime: Moment): void {
+  if (shutdownTimer) clearTimeout(shutdownTimer)
+  shutdownTime = newTime
+  shutdownTimer = setTimeout(ec2.stopServer, shutdownTime.diff(moment()))
+
+  console.log(`Server shutdown scheduled for ${shutdownTime.format('LT')} (${shutdownTime.fromNow()})`)
 }
 
 function getFriendlyTime(date: Moment) {
