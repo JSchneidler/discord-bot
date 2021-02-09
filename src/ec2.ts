@@ -1,7 +1,6 @@
+import config from 'config'
 import { DescribeInstancesCommand, EC2Client, InstanceStateName, RebootInstancesCommand, StartInstancesCommand, StopInstancesCommand } from '@aws-sdk/client-ec2'
 import moment, { Moment } from 'moment'
-
-import { ec2Region, ec2InstanceId } from './config'
 
 interface EC2Status {
   state?: InstanceStateName,
@@ -13,7 +12,7 @@ class EC2 {
   private shutdownTime?: Moment
   private running = false
   private client = new EC2Client({
-    region: ec2Region
+    region: config.get('ec2Region')
   })
 
   constructor() {
@@ -21,7 +20,7 @@ class EC2 {
   }
 
   async fetchServerStatus(): Promise<EC2Status> {
-    const response = await this.client.send(new DescribeInstancesCommand({ InstanceIds: [ec2InstanceId]} ))
+    const response = await this.client.send(new DescribeInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
     if (response.Reservations && response.Reservations[0] && response.Reservations[0].Instances && response.Reservations[0].Instances[0].State) {
       return {
         state: response.Reservations[0].Instances[0].State.Name as InstanceStateName,
@@ -36,7 +35,7 @@ class EC2 {
     if (this.running) {
       if (this.shutdownTimer) clearTimeout(this.shutdownTimer)
 
-      await this.client.send(new StopInstancesCommand({ InstanceIds: [ec2InstanceId]} ))
+      await this.client.send(new StopInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
       console.log('Valheim server stopped')
       await this.refreshServerState()
     }
@@ -46,7 +45,7 @@ class EC2 {
     if (!this.running) {
       this.setShutdownTime(moment().add(hours, 'hours'))
 
-      await this.client.send(new StartInstancesCommand({ InstanceIds: [ec2InstanceId]} ))
+      await this.client.send(new StartInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
       await this.refreshServerState()
     }
   }
@@ -62,7 +61,7 @@ class EC2 {
   async rebootServer(): Promise<void> {
     this.setShutdownTime(moment().add(12, 'hours'))
 
-    await this.client.send(new RebootInstancesCommand({ InstanceIds: [ec2InstanceId]} ))
+    await this.client.send(new RebootInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
     await this.refreshServerState()
   }
 

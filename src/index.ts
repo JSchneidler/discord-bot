@@ -1,7 +1,7 @@
+import config from 'config'
 import { Client, TextChannel } from 'discord.js'
-import moment from 'moment'
+import moment, { Moment } from 'moment-timezone'
 
-import { allowedIds, channelId, serverId } from './config'
 import ec2 from './ec2'
 
 enum SlashCommands {
@@ -36,7 +36,7 @@ async function init() {
     botChannel?.send(caller)
 
     // Fail out if user is not allowed to perform slash commands
-    if (!allowedIds.includes(interaction.member.user.id)) {
+    if (!config.get<Array<string>>('allowedIds').includes(interaction.member.user.id)) {
       return
     }
 
@@ -48,14 +48,14 @@ async function init() {
         if (!ec2.isRunning()) {
           await ec2.startServer(interaction.data.options ? interaction.data.options[0].value : undefined)
           const shutdownTime = moment(ec2.getShutdownTime())
-          botChannel?.send(`Valheim server started. Shutdown time: ${shutdownTime.format('LT')} (${shutdownTime.fromNow()})`)
+          botChannel?.send(`Valheim server started. Shutdown time: ${getFriendlyTime(shutdownTime)})`)
         } else botChannel?.send('Valheim server already running')
         break
       case SlashCommands.Extend:
         if (ec2.isRunning()) {
           await ec2.extendServer(interaction.data.options ? interaction.data.options[0].value : undefined)
           const shutdownTime = moment(ec2.getShutdownTime())
-          botChannel?.send(`New shutdown time: ${shutdownTime.format('LT')} (${shutdownTime.fromNow()})`)
+          botChannel?.send(`New shutdown time: ${getFriendlyTime(shutdownTime)})`)
         } else botChannel?.send('Valheim server not running')
         break
       case SlashCommands.Stop:
@@ -68,7 +68,7 @@ async function init() {
       if (ec2.isRunning()) {
         await ec2.rebootServer()
         const shutdownTime = moment(ec2.getShutdownTime())
-        botChannel?.send(`Rebooting Valheim server. New shutdown time: ${shutdownTime.format('LT')} (${shutdownTime.fromNow()})`)
+        botChannel?.send(`Rebooting Valheim server. New shutdown time: ${getFriendlyTime(shutdownTime)})`)
       } else botChannel?.send('Valheim server not running')
         break
     }
@@ -78,7 +78,7 @@ async function init() {
 
   function registerSlashCommands() {
     // @ts-expect-error: No support for slash commands yet
-    client.api.applications(client.user.id).guilds(serverId).commands.post({
+    client.api.applications(client.user.id).guilds(config.get('serverId')).commands.post({
       data: {
         name: 'status',
         description: 'Get status of Valheim server'
@@ -86,7 +86,7 @@ async function init() {
     })
 
     // @ts-expect-error: No support for slash commands yet
-    client.api.applications(client.user.id).guilds(serverId).commands.post({
+    client.api.applications(client.user.id).guilds(config.get('serverId')).commands.post({
       data: {
         name: 'start',
         description: 'Start the Valheim server for a specified number of hours or 12 by default',
@@ -102,7 +102,7 @@ async function init() {
     })
 
     // @ts-expect-error: No support for slash commands yet
-    client.api.applications(client.user.id).guilds(serverId).commands.post({
+    client.api.applications(client.user.id).guilds(config.get('serverId')).commands.post({
       data: {
         name: 'extend',
         description: 'Postpone the Valheim server shutdown time for a specified number of hours or 6 by default',
@@ -118,7 +118,7 @@ async function init() {
     })
 
     // @ts-expect-error: No support for slash commands yet
-    client.api.applications(client.user.id).guilds(serverId).commands.post({
+    client.api.applications(client.user.id).guilds(config.get('serverId')).commands.post({
       data: {
         name: 'stop',
         description: 'Shutdown Valheim server'
@@ -126,7 +126,7 @@ async function init() {
     })
 
     // @ts-expect-error: No support for slash commands yet
-    client.api.applications(client.user.id).guilds(serverId).commands.post({
+    client.api.applications(client.user.id).guilds(config.get('serverId')).commands.post({
       data: {
         name: 'reboot',
         description: 'Reboot Valheim server'
@@ -136,7 +136,7 @@ async function init() {
 
   // Assigns the primary channel that the bot will post responses to
   async function getBotChannel(): Promise<TextChannel> {
-    const channel = await client.channels.fetch(channelId)
+    const channel = await client.channels.fetch(config.get('channelId'))
     if (channel.type === 'text') {
       return channel as TextChannel
     } else {
@@ -149,9 +149,13 @@ async function init() {
     if (status) {
       const shutdownTime = moment(ec2.getShutdownTime())
       botChannel?.send(`Valheim server status: ${status.state}`)
-      if (ec2.isRunning()) botChannel?.send(`Shutdown time: ${shutdownTime.format('LT')} (${shutdownTime.fromNow()})`)
+      if (ec2.isRunning()) botChannel?.send(`Shutdown time: ${getFriendlyTime(shutdownTime)})`)
     }
   }
+}
+
+function getFriendlyTime(date: Moment) {
+  return `${date.tz(config.get('timezone')).format('LT')} (${date.fromNow()}`
 }
 
 init()
