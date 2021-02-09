@@ -5,7 +5,8 @@ export const ec2InstanceId = 'i-04bd8999038cf7c74' // Test instance
 
 // Discord config
 export const serverId = '431629509348032522'
-export const channelId = '439446511701458951'
+// export const channelId = '439446511701458951'
+export const channelId = '808802497152942110' // Test channel
 export const allowedIds = [
   '235197986903162881', // Jordan
   '272593984252018700', // Will
