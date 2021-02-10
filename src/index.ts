@@ -164,7 +164,7 @@ async function init() {
 function setShutdownTime(newTime: Moment): void {
   if (shutdownTimer) clearTimeout(shutdownTimer)
   shutdownTime = newTime
-  shutdownTimer = setTimeout(ec2.stopServer, shutdownTime.diff(moment()))
+  shutdownTimer = setTimeout(() => ec2.stopServer(), shutdownTime.diff(moment()))
 
   console.log(`Server shutdown scheduled for ${shutdownTime.format('LT')} (${shutdownTime.fromNow()})`)
 }

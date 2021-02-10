@@ -3,5 +3,11 @@ module.exports = {
   ec2InstanceId: 'i-07b1e73667c2018ca', // 'Valheim Server' instance
 
   // Discord config
-  channelId: '439446511701458951', // 'bot' channel
+  channelId: '439446511701458951', // 'bot' channel,
+  allowedIds: [
+  '235197986903162881', // Jordan
+  '272593984252018700', // Will
+  '449620984283004928', // Devon
+  '438171164976873473', // Pete
+]
 }
