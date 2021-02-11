@@ -166,6 +166,7 @@ function setShutdownTime(newTime: Moment): void {
   shutdownTime = newTime
   shutdownTimer = setTimeout(() => ec2.stopServer(), shutdownTime.diff(moment()))
 
+  // TODO: Broadcast new shutdown time to Discord server
   console.log(`Server shutdown scheduled for ${shutdownTime.format('LT')} (${shutdownTime.fromNow()})`)
 }
 

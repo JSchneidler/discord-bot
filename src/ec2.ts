@@ -33,6 +33,7 @@ class EC2 {
   async stopServer(): Promise<void> {
     if (this.running) {
       await this.client.send(new StopInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+      this.running = false
       console.log('Valheim server stopped')
       // await this.fetchServerState()
     }
@@ -41,6 +42,7 @@ class EC2 {
   async startServer(): Promise<void> {
     if (!this.running) {
       await this.client.send(new StartInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+      this.running = true
       console.log('Valheim server started')
       // await this.fetchServerState()
     }
