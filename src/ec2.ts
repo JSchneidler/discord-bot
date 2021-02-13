@@ -1,8 +1,9 @@
 import config from 'config'
-import { DescribeInstancesCommand, EC2Client, InstanceStateName, RebootInstancesCommand, StartInstancesCommand, StopInstancesCommand } from '@aws-sdk/client-ec2'
+import { DescribeAddressesCommand, DescribeInstancesCommand, EC2Client, InstanceStateName, RebootInstancesCommand, StartInstancesCommand, StopInstancesCommand } from '@aws-sdk/client-ec2'
 
 interface EC2Status {
   state?: InstanceStateName,
+  ip?: string,
   launched?: Date
 }
 
@@ -14,6 +15,7 @@ class EC2 {
 
   async fetchServerState(): Promise<EC2Status> {
     const response = await this.client.send(new DescribeInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+    const elasticIp = await this.fetchElasticIp()
 
     if (response.Reservations && response.Reservations[0] && response.Reservations[0].Instances && response.Reservations[0].Instances[0].State) {
       const state = response.Reservations[0].Instances[0].State.Name as InstanceStateName
@@ -23,6 +25,7 @@ class EC2 {
 
       return {
         state,
+        ip: elasticIp,
         launched: response.Reservations[0].Instances[0].LaunchTime
       }
     } else {
@@ -55,8 +58,18 @@ class EC2 {
     }
   }
 
-  public isRunning() {
+  isRunning() {
     return this.running
+  }
+
+  private async fetchElasticIp() {
+    const response = await this.client.send(new DescribeAddressesCommand({
+      Filters: [
+        {Name: 'instance-id', Values: [config.get('ec2InstanceId')]}
+      ]
+    }))
+
+    if (response.Addresses) return response.Addresses[0].PublicIp
   }
 }
 

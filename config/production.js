@@ -1,6 +1,6 @@
 module.exports = {
   // EC2 config
-  ec2InstanceId: 'i-07b1e73667c2018ca', // 'Valheim Server' instance
+  ec2InstanceId: 'i-0587b7da3e465c724', // 'Valheim Server' instance
 
   // Discord config
   channelId: '439446511701458951', // 'bot' channel,

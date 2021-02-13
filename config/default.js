@@ -1,7 +1,7 @@
 module.exports = {
   // EC2 config
   ec2Region: 'us-east-2',
-  ec2InstanceId: 'i-04bd8999038cf7c74', // 'Test' instance
+  ec2InstanceId: 'i-0fa45d092c4bbf554', // 'Test' instance
 
   // Discord config
   timezone: 'America/Denver',
