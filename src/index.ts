@@ -155,8 +155,7 @@ async function init() {
   async function sendServerStatus() {
     const status = await ec2.fetchServerState()
     if (status) {
-      // botChannel?.send(`Valheim server (${status.ip}:2457) status: ${status.state}`)
-      botChannel?.send(`Valheim server status: ${status.state}`)
+      botChannel?.send(`Valheim server (${status.ip}:2457) status: ${status.state}`)
       if (ec2.isRunning()) botChannel?.send(`Shutdown time: ${getFriendlyTime(shutdownTime)})`)
     }
   }
