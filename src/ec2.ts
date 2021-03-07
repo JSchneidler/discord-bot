@@ -1,10 +1,12 @@
 import config from 'config'
+import moment, { Moment } from 'moment'
 import { DescribeAddressesCommand, DescribeInstancesCommand, EC2Client, InstanceStateName, RebootInstancesCommand, StartInstancesCommand, StopInstancesCommand } from '@aws-sdk/client-ec2'
 
 interface EC2Status {
   state?: InstanceStateName,
+  running: boolean,
   ip?: string,
-  launched?: Date
+  launched?: Moment
 }
 
 class EC2 {
@@ -14,7 +16,7 @@ class EC2 {
   })
 
   async fetchServerState(): Promise<EC2Status> {
-    const response = await this.client.send(new DescribeInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+    const response = await this.client.send(new DescribeInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')] }))
     const elasticIp = await this.fetchElasticIp()
 
     if (response.Reservations && response.Reservations[0] && response.Reservations[0].Instances && response.Reservations[0].Instances[0].State) {
@@ -25,8 +27,9 @@ class EC2 {
 
       return {
         state,
-        ip: elasticIp,
-        launched: response.Reservations[0].Instances[0].LaunchTime
+        running: this.running,
+        ip: elasticIp || response.Reservations[0].Instances[0].PublicIpAddress,
+        launched: moment(response.Reservations[0].Instances[0].LaunchTime)
       }
     } else {
       throw Error('Unable to fetch EC2 server status')
@@ -35,7 +38,7 @@ class EC2 {
 
   async stopServer(): Promise<void> {
     if (this.running) {
-      await this.client.send(new StopInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+      await this.client.send(new StopInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')] }))
       this.running = false
       console.log('Valheim server stopped')
       // await this.fetchServerState()
@@ -44,7 +47,7 @@ class EC2 {
 
   async startServer(): Promise<void> {
     if (!this.running) {
-      await this.client.send(new StartInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+      await this.client.send(new StartInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')] }))
       this.running = true
       console.log('Valheim server started')
       // await this.fetchServerState()
@@ -53,7 +56,7 @@ class EC2 {
 
   async rebootServer(): Promise<void> {
     if (this.running) {
-      await this.client.send(new RebootInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')]} ))
+      await this.client.send(new RebootInstancesCommand({ InstanceIds: [config.get('ec2InstanceId')] }))
       // await this.fetchServerState()
     }
   }
@@ -65,11 +68,12 @@ class EC2 {
   private async fetchElasticIp() {
     const response = await this.client.send(new DescribeAddressesCommand({
       Filters: [
-        {Name: 'instance-id', Values: [config.get('ec2InstanceId')]}
+        { Name: 'instance-id', Values: [config.get('ec2InstanceId')] }
       ]
     }))
 
-    if (response.Addresses) return response.Addresses[0].PublicIp
+    if (response.Addresses && response.Addresses.length)
+      return response.Addresses[0].PublicIp
   }
 }
 

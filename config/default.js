@@ -5,9 +5,9 @@ module.exports = {
 
   // Discord config
   timezone: 'America/Denver',
-  serverId: '431629509348032522', // Sqwayed
-  channelId: '808802497152942110', // 'bot-testing' channel
-  allowedIds: [
+  serverId: '431629509348032522', // 'Sqwayed' guild/server
+  allowedDiscordRole: '818212221694902282', // 'Valheim' Role
+  allowedDiscordUserIds: [
     '235197986903162881' // Jordan
   ]
 }

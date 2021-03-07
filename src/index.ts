@@ -1,6 +1,7 @@
 import config from 'config'
-import { Client, TextChannel } from 'discord.js'
+import { Client } from 'discord.js'
 import moment, { Moment } from 'moment-timezone'
+import axios from 'axios'
 
 import ec2 from './ec2'
 
@@ -10,6 +11,12 @@ enum SlashCommands {
   Extend = 'extend',
   Stop ='stop',
   Reboot ='reboot',
+}
+
+enum InteractionResponseType {
+  Pong = 1,
+  ChannelMessageWithSource = 4,
+  DeferredChannelMessageWithSource = 5,
 }
 
 let shutdownTimer: NodeJS.Timeout
@@ -22,64 +29,82 @@ async function init() {
   }
 
   const state = await ec2.fetchServerState()
-  setShutdownTime(moment(state.launched).add(12, 'hours'))
+  if (state.running)
+    setShutdownTime(moment().add(12, 'hours'))
 
   const client = new Client()
-
-  let botChannel: TextChannel
 
   client.on('ready', async () => {
     console.log(`Discord bot logged in as ${client.user?.tag}`)
 
     registerSlashCommands()
-    botChannel = await getBotChannel()
-    await sendServerStatus()
   })
 
   // @ts-expect-error: No support for interactions yet
   client.ws.on('INTERACTION_CREATE', async interaction => {
     const caller = `User '${interaction.member.nick || interaction.member.user.username}' called command '${interaction.data.name}'`
     console.log(caller)
-    botChannel?.send(caller)
 
-    // Fail out if user is not allowed to perform slash commands
-    if (!config.get<Array<string>>('allowedIds').includes(interaction.member.user.id)) {
+    const isAllowedByRole = interaction.member.roles.includes(config.get<string>('allowedDiscordRole'))
+    const isAllowedByUserId = config.get<Array<string>>('allowedDiscordUserIds').includes(interaction.member.user.id)
+
+    // Silent exit out if user is not allowed to perform slash commands
+    if (!(isAllowedByRole || isAllowedByUserId)) {
       return
     }
 
+    const state = await ec2.fetchServerState()
+    let response = ''
+
     switch(interaction.data.name) {
       case SlashCommands.Status:
-        await sendServerStatus()
+        if (state) {
+          response = `Valheim server (${state.ip + ':2457' || 'No IP'}) status: ${state.state}`
+          if (state.running) response += `Shutdown time: ${getFriendlyTime(shutdownTime)})`
+        }
         break
       case SlashCommands.Start:
-        if (!ec2.isRunning()) {
+        if (!state.running) {
           await ec2.startServer()
           setShutdownTime(moment().add(interaction.data.options ? interaction.data.options[0].value : 12, 'hours'))
-          botChannel?.send(`Valheim server started. Shutdown time: ${getFriendlyTime(shutdownTime)})`)
-        } else botChannel?.send('Valheim server already running')
+          response = `Valheim server started. Shutdown time: ${getFriendlyTime(shutdownTime)})`
+        } else
+          response = 'Valheim server already running'
         break
       case SlashCommands.Extend:
-        if (ec2.isRunning()) {
+        if (state.running) {
           setShutdownTime(moment().add(interaction.data.options ? interaction.data.options[0].value : 6, 'hours'))
-          botChannel?.send(`New shutdown time: ${getFriendlyTime(shutdownTime)})`)
-        } else botChannel?.send('Valheim server not running')
+          response = `New shutdown time: ${getFriendlyTime(shutdownTime)})`
+        } else
+          response = 'Valheim server not running'
         break
       case SlashCommands.Stop:
-        if (ec2.isRunning()) {
+        if (state.running) {
           clearTimeout(shutdownTimer)
           shutdownTime = moment()
           await ec2.stopServer()
-          botChannel?.send('Valheim server stopped')
-        } else botChannel?.send('Valheim server not running')
+          response = 'Valheim server stopped'
+        } else
+          response = 'Valheim server not running'
         break
       case SlashCommands.Reboot:
-      if (ec2.isRunning()) {
+      if (state.running) {
         await ec2.rebootServer()
         setShutdownTime(moment().add(12, 'hours'))
-        botChannel?.send(`Rebooting Valheim server. New shutdown time: ${getFriendlyTime(shutdownTime)})`)
-      } else botChannel?.send('Valheim server not running')
+        response = `Rebooting Valheim server. New shutdown time: ${getFriendlyTime(shutdownTime)})`
+      } else
+        response = 'Valheim server not running'
         break
     }
+
+    // Respond to interaction
+    const url = `https://discord.com/api/v8/interactions/${interaction.id}/${interaction.token}/callback`
+    await axios.post(url, {
+      type: InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        content: response
+      }
+    })
   })
 
   await client.login(BOT_TOKEN)
@@ -140,24 +165,6 @@ async function init() {
         description: 'Reboot Valheim server'
       }
     })
-  }
-
-  // Assigns the primary channel that the bot will post responses to
-  async function getBotChannel(): Promise<TextChannel> {
-    const channel = await client.channels.fetch(config.get('channelId'))
-    if (channel.type === 'text') {
-      return channel as TextChannel
-    } else {
-      throw Error('Bot channel is not a text channel')
-    }
-  }
-
-  async function sendServerStatus() {
-    const status = await ec2.fetchServerState()
-    if (status) {
-      botChannel?.send(`Valheim server (${status.ip}:2457) status: ${status.state}`)
-      if (ec2.isRunning()) botChannel?.send(`Shutdown time: ${getFriendlyTime(shutdownTime)})`)
-    }
   }
 }
 
